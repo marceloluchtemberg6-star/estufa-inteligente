@@ -37,3 +37,14 @@ Tópicos:
 
 ## 👨‍💻 Autor
 Projeto desenvolvido para aula de Internet das Coisas (IoT)
+
+## 🖼️ Imagens do projeto
+
+### 🔧 Circuito da estufa
+![Circuito](imagens/estufa.png)
+
+### 📡 Comunicação MQTT
+![MQTT](imagens/mqtt.png)
+
+### 📊 Monitoramento
+![Monitor](imagens/monitor.png)
