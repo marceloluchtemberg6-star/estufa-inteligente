@@ -1,0 +1,4 @@
+def chegou_mensagem(topic, msg):
+
+    if msg == b"REARME":
+        rearmar_sistema()
