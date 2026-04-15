@@ -1,0 +1,102 @@
+from machine import Pin, ADC
+import dht
+import time
+import network
+from umqtt.simple import MQTTClient
+
+# ===== WIFI =====
+SSID = "Wokwi-GUEST"
+PASSWORD = ""
+
+# ===== MQTT =====
+MQTT_BROKER = "test.mosquitto.org"
+CLIENT_ID = "marcelo_estufa_01"
+
+TOPIC_TEMP = b"marcelo/estufa/temp"
+TOPIC_LUZ = b"marcelo/estufa/luz"
+TOPIC_CMD = b"marcelo/estufa/irrigacao"
+
+# ===== PINOS =====
+dht_pin = Pin(4)
+ldr = ADC(Pin(34))
+
+led_vermelho = Pin(19, Pin.OUT)
+led_azul = Pin(5, Pin.OUT)
+
+sensor = dht.DHT22(dht_pin)
+ldr.atten(ADC.ATTN_11DB)
+
+# ===== LIMITE DE LUZ =====
+limite_escuro = 2000
+
+# ===== WIFI =====
+def conecta_wifi():
+    wifi = network.WLAN(network.STA_IF)
+    wifi.active(True)
+    wifi.connect(SSID, PASSWORD)
+
+    print("Conectando WiFi...")
+    while not wifi.isconnected():
+        time.sleep(1)
+
+    print("WiFi conectado!")
+
+# ===== MQTT CALLBACK =====
+def chegou_mensagem(topic, msg):
+    print("Recebido:", msg)
+
+    if msg == b"IRRIGAR_ON":
+        led_azul.on()
+        print("Irrigação LIGADA")
+
+    elif msg == b"IRRIGAR_OFF":
+        led_azul.off()
+        print("Irrigação DESLIGADA")
+
+# ===== MQTT =====
+def conecta_mqtt():
+    client = MQTTClient(CLIENT_ID, MQTT_BROKER)
+    client.set_callback(chegou_mensagem)
+    client.connect()
+    client.subscribe(TOPIC_CMD)
+
+    print("MQTT conectado!")
+    return client
+
+# ===== START =====
+conecta_wifi()
+client = conecta_mqtt()
+
+# ===== LOOP =====
+while True:
+    try:
+        sensor.measure()
+        temp = sensor.temperature()
+        umid = sensor.humidity()
+        luz = ldr.read()
+
+        print("----------------------")
+        print("Temp:", temp, "°C")
+        print("Umidade:", umid, "%")
+        print("Luz:", luz)
+
+        # AUTOMAÇÃO (LED vermelho)
+        if luz < limite_escuro:
+            led_vermelho.on()
+            print("Escuro -> Aquecimento ON")
+        else:
+            led_vermelho.off()
+            print("Claro -> Aquecimento OFF")
+
+        # PUBLICAR MQTT
+        client.publish(TOPIC_TEMP, str(temp))
+        client.publish(TOPIC_LUZ, str(luz))
+
+        # RECEBER MQTT
+        client.check_msg()
+
+        time.sleep(2)
+
+    except Exception as e:
+        print("Erro:", e)
+        time.sleep(2)
